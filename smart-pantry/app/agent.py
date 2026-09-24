@@ -38,7 +38,7 @@ from .a2ui_utils import a2ui_callback
 MODEL = "gemini-2.5-flash"
 PROJECT_ID = "qwiklabs-gcp-02-075769363a76"
 BUCKET_NAME = "smart-pantry-images-qwiklabs-gcp-02-075769363a76"
-ENGINE_ID = "2458747693241991168"
+ENGINE_ID = "1959270347068932096"
 
 # Load Agent Engine resource name from deployment_metadata.json if available
 agent_engine_resource_name = None
@@ -48,6 +48,8 @@ if metadata_file.exists():
         with open(metadata_file, "r") as f:
             metadata = json.load(f)
             agent_engine_resource_name = metadata.get("remote_agent_runtime_id")
+            if agent_engine_resource_name and "/" in agent_engine_resource_name:
+                ENGINE_ID = agent_engine_resource_name.split("/")[-1]
     except Exception:
         pass
 

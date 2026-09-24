@@ -5,7 +5,7 @@ region: us-east1
 base_template: adk
 generated_at: '2026-09-24T04:05:49.503860+00:00'
 language: python
-memory_service_uri: agentengine://2458747693241991168
+memory_service_uri: agentengine://1959270347068932096
 create_params:
   root_agent_name: weather_agent
   deployment_target: agent_runtime
