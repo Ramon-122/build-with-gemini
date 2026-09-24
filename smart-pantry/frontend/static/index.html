@@ -199,6 +199,23 @@ function buildNode(id, comps, seen) {
     }
     case "Divider":
       return el("hr", "a2divider");
+    case "Video": {
+      const src = boundStr(props.url || props.src);
+      if (!/^https?:\/\//i.test(src)) return null;
+      const vid = el("video", "a2img");
+      vid.src = src;
+      vid.controls = true;
+      vid.autoplay = true;
+      vid.loop = true;
+      vid.muted = true;
+      vid.playsInline = true;
+      vid.style.maxWidth = "100%";
+      vid.style.borderRadius = "8px";
+      vid.style.margin = "8px 0";
+      vid.style.display = "block";
+      vid.style.background = "#000";
+      return vid;
+    }
     case "Image": {
       const src = boundStr(props.url || props.src);
       if (!/^https?:\/\//i.test(src)) return null;   // only allow safe URLs
