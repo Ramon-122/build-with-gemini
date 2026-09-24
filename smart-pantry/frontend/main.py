@@ -114,6 +114,16 @@ def _extract_parts(parts: list) -> list[dict]:
         data_val = getattr(root, "data", None)
         if data_val is not None:
             meta = getattr(root, "metadata", None) or {}
+            if isinstance(data_val, dict):
+                inner_meta = data_val.get("metadata") or {}
+                if isinstance(inner_meta, dict) and inner_meta.get("mimeType") == _A2UI_MIME:
+                    out.append({"kind": "a2ui", "data": data_val.get("data") or data_val})
+                    continue
+                inner_data = data_val.get("data") if isinstance(data_val.get("data"), dict) else data_val
+                if isinstance(inner_data, dict) and ("surfaceUpdate" in inner_data or "beginRendering" in inner_data or "deleteSurface" in inner_data):
+                    out.append({"kind": "a2ui", "data": inner_data})
+                    continue
+
             mime = meta.get("mimeType") if isinstance(meta, dict) else getattr(meta, "mime_type", None)
             if mime == _A2UI_MIME:
                 out.append({"kind": "a2ui", "data": data_val})
@@ -154,7 +164,6 @@ async def chat(req: Request):
         )
 
         last_task = None
-        got_artifact_update = False
         async for event in a2a_client.send_message(msg):
             if isinstance(event, tuple):
                 task, update = event
@@ -170,12 +179,21 @@ async def chat(req: Request):
             if update is not None:
                 art = getattr(update, "artifact", None)
                 if art:
-                    got_artifact_update = True
-                    parts.extend(_extract_parts(getattr(art, "parts", [])))
+                    extracted = _extract_parts(getattr(art, "parts", []))
+                    if extracted:
+                        parts.extend(extracted)
 
-        if not got_artifact_update and last_task is not None:
+        # Fallback 1: check artifacts on last_task if parts is empty
+        if not parts and last_task is not None:
             for artifact in getattr(last_task, "artifacts", None) or []:
                 parts.extend(_extract_parts(getattr(artifact, "parts", [])))
+
+        # Fallback 2: check history on last_task if parts is still empty
+        if not parts and last_task is not None:
+            for history_msg in getattr(last_task, "history", None) or []:
+                role_val = str(getattr(history_msg, "role", "")).lower()
+                if "user" not in role_val:
+                    parts.extend(_extract_parts(getattr(history_msg, "parts", [])))
 
     if not parts:
         parts = [{"kind": "text", "text": "(The agent didn't return a reply.)"}]
