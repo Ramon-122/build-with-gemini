@@ -108,6 +108,22 @@ def _extract_parts(parts: list) -> list[dict]:
         root = getattr(p, "root", p)
         text_val = getattr(root, "text", None)
         if text_val:
+            if "<a2ui-json>" in text_val and "</a2ui-json>" in text_val:
+                try:
+                    import re, json
+                    match = re.search(r"<a2ui-json>(.*?)</a2ui-json>", text_val, re.DOTALL)
+                    if match:
+                        json_str = match.group(1).strip()
+                        parsed_json = json.loads(json_str)
+                        if isinstance(parsed_json, dict) and ("components" in parsed_json or "surfaceUpdate" in parsed_json):
+                            data_payload = {"surfaceUpdate": parsed_json} if "components" in parsed_json else parsed_json
+                            out.append({"kind": "a2ui", "data": data_payload})
+                            remaining_text = text_val.replace(match.group(0), "").strip()
+                            if remaining_text:
+                                out.append({"kind": "text", "text": remaining_text})
+                            continue
+                except Exception:
+                    pass
             out.append({"kind": "text", "text": text_val})
             continue
 
