@@ -153,7 +153,16 @@ async def chat(req: Request):
             context_id=_contexts.get(user_id),
         )
 
-        send_req = SendMessageRequest(message=msg)
+        try:
+            from a2a.types import MessageSendParams
+            params = MessageSendParams(message=msg)
+        except (ImportError, Exception):
+            params = {"message": msg}
+
+        try:
+            send_req = SendMessageRequest(id=str(uuid.uuid4()), params=params)
+        except Exception:
+            send_req = SendMessageRequest(message=msg)
 
         last_task = None
         got_artifact_update = False
