@@ -274,10 +274,28 @@ function flattenText(messages) {
 
 function renderReply(b, parts) {
   b.textContent = "";   // clear the "…" placeholder
-  const texts = parts.filter(p => p && (p.kind === "text" || (!p.kind && p.text))).map(p => p.text || "");
+  const rawTexts = parts.filter(p => p && (p.kind === "text" || (!p.kind && p.text))).map(p => p.text || "");
   const a2ui = parts.filter(p => p && p.kind === "a2ui" && p.data).map(p => p.data);
+  const cleanTexts = [];
 
-  const textStr = texts.join("\n").trim();
+  for (let t of rawTexts) {
+    if (t.includes("<a2ui-json>") && t.includes("</a2ui-json>")) {
+      const match = t.match(/<a2ui-json>([\s\S]*?)<\/a2ui-json>/);
+      if (match) {
+        try {
+          const parsed = JSON.parse(match[1].trim());
+          const payload = parsed.components ? { surfaceUpdate: parsed } : parsed;
+          a2ui.push(payload);
+          t = t.replace(match[0], "").trim();
+        } catch (e) {
+          console.error("Failed to parse inline a2ui-json:", e);
+        }
+      }
+    }
+    if (t) cleanTexts.push(t);
+  }
+
+  const textStr = cleanTexts.join("\n").trim();
   if (textStr) renderRichText(textStr, b);
 
   if (a2ui.length) {
