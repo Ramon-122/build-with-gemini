@@ -115,6 +115,58 @@ function childIds(props) {
 // A2UI icon names are camelCase (locationOn); Material Symbols wants snake_case.
 function iconName(n) { return String(n || "").replace(/([a-z0-9])([A-Z])/g, "$1_$2").replace(/\s+/g, "_").toLowerCase(); }
 
+function renderRichText(textStr, container) {
+  if (!textStr) return;
+  const urlRegex = /(https?:\/\/[^\s<]+)/gi;
+  const parts = textStr.split(urlRegex);
+  
+  const div = el("div");
+  for (let i = 0; i < parts.length; i++) {
+    const chunk = parts[i];
+    if (i % 2 === 1) {
+      const cleanUrl = chunk.replace(/[.,;)]+$/, "");
+      const isVideo = /\.(mp4|webm|mov)(\?.*)?$/i.test(cleanUrl) || cleanUrl.includes("/video");
+      const isImage = /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(cleanUrl);
+      
+      if (isVideo) {
+        const vid = el("video");
+        vid.src = cleanUrl;
+        vid.controls = true;
+        vid.autoplay = true;
+        vid.loop = true;
+        vid.muted = true;
+        vid.playsInline = true;
+        vid.style.maxWidth = "100%";
+        vid.style.borderRadius = "8px";
+        vid.style.margin = "8px 0";
+        vid.style.display = "block";
+        vid.style.background = "#000";
+        div.appendChild(vid);
+      } else if (isImage) {
+        const img = el("img", "a2img");
+        img.src = cleanUrl;
+        img.style.maxWidth = "100%";
+        img.style.borderRadius = "8px";
+        img.style.margin = "8px 0";
+        img.style.display = "block";
+        div.appendChild(img);
+      } else {
+        const a = el("a");
+        a.href = cleanUrl;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.textContent = cleanUrl;
+        a.style.color = "var(--accent)";
+        a.style.textDecoration = "underline";
+        div.appendChild(a);
+      }
+    } else if (chunk) {
+      div.appendChild(document.createTextNode(chunk));
+    }
+  }
+  container.appendChild(div);
+}
+
 function buildNode(id, comps, seen) {
   if (!id || seen.has(id)) return null;   // missing / cycle guard
   seen.add(id);
@@ -142,7 +194,7 @@ function buildNode(id, comps, seen) {
       const hint = String(props.usageHint || "body").toLowerCase();
       if (["h1", "h2", "h3", "h4", "h5", "h6"].includes(hint)) t.classList.add("a2-" + hint);
       else if (hint === "caption") t.classList.add("a2-caption");
-      t.textContent = boundStr(props.text);
+      renderRichText(boundStr(props.text), t);
       return t;
     }
     case "Divider":
@@ -150,6 +202,18 @@ function buildNode(id, comps, seen) {
     case "Image": {
       const src = boundStr(props.url || props.src);
       if (!/^https?:\/\//i.test(src)) return null;   // only allow safe URLs
+      if (/\.(mp4|webm|mov)(\?.*)?$/i.test(src)) {
+        const vid = el("video", "a2img");
+        vid.src = src;
+        vid.controls = true;
+        vid.autoplay = true;
+        vid.loop = true;
+        vid.muted = true;
+        vid.playsInline = true;
+        vid.style.maxWidth = "100%";
+        vid.style.borderRadius = "8px";
+        return vid;
+      }
       const img = el("img", "a2img"); img.src = src; img.alt = boundStr(props.alt) || ""; return img;
     }
     case "Icon": {
@@ -197,11 +261,15 @@ function renderReply(b, parts) {
   const a2ui = parts.filter(p => p && p.kind === "a2ui" && p.data).map(p => p.data);
 
   const textStr = texts.join("\n").trim();
-  if (textStr) b.appendChild(el("div", null, textStr));
+  if (textStr) renderRichText(textStr, b);
 
   if (a2ui.length) {
     b.classList.add("rich");
-    if (!renderSurface(a2ui, b)) b.appendChild(el("div", null, flattenText(a2ui) || "(no card content)"));
+    if (!renderSurface(a2ui, b)) {
+      const flat = flattenText(a2ui);
+      if (flat) renderRichText(flat, b);
+      else b.appendChild(el("div", null, "(no card content)"));
+    }
   }
   if (!b.childNodes.length) b.textContent = "(no response)";
   log.scrollTop = log.scrollHeight;

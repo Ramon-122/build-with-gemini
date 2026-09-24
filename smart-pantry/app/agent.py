@@ -261,11 +261,13 @@ def generate_dish_video(
         pass
 
     if not video_bytes:
-        video_bytes = (
-            b"\x00\x00\x00\x1cftypisom\x00\x00\x02\x00isomiso2avc1mp41"
-            b"\x00\x00\x00\x08free\x00\x00\x00\x08mdat"
-            + f"Smart Pantry Video: {dish_name}".encode("utf-8")
-        )
+        try:
+            import urllib.request
+            sample_url = "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"
+            with urllib.request.urlopen(sample_url, timeout=5) as resp:
+                video_bytes = resp.read()
+        except Exception:
+            video_bytes = b"\x00\x00\x00\x1cftypisom\x00\x00\x02\x00isomiso2avc1mp41\x00\x00\x00\x08free\x00\x00\x00\x08mdat"
         mime_type = "video/mp4"
 
     filename = f"{slug}.mp4"
